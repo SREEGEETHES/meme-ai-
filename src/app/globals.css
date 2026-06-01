@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cream: #f5f0e6;
+  --red: #e63946;
+  --black: #0a0a0a;
+}
+
+body {
+  @apply bg-cream text-meme-black antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
