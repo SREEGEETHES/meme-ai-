@@ -1,6 +1,6 @@
 "use client";
 
-import { FAL_MODELS, runFalModel, uploadToFal } from "./fal-client";
+import { FAL_MODELS, runFalModel, uploadToFal, uploadUrlToFal } from "./fal-client";
 import { REPLICATE_MODELS } from "./models";
 import {
   createPrediction,
@@ -41,6 +41,15 @@ function isGifUrl(url: string): boolean {
     /\.gif(\?|$)/i.test(url) ||
     (url.includes("giphy.com") && !url.endsWith(".mp4"))
   );
+}
+
+function isExternalGiphyUrl(url: string): boolean {
+  try {
+    const hostname = new URL(url).hostname;
+    return hostname.includes("giphy.com");
+  } catch {
+    return false;
+  }
 }
 
 function pickVideoUrl(meme: MemeItem): string {
@@ -124,10 +133,21 @@ async function generateWithFal(
 ): Promise<string> {
   const { meme, photoFile, swapType, onStatus } = params;
 
-  onStatus?.("uploading");
-  const faceUrl = await uploadToFal(key, photoFile);
+  const resolveMediaUrl = async (url: string) => {
+    if (isExternalGiphyUrl(url)) {
+      return await uploadUrlToFal(key, url);
+    }
+    return url;
+  };
 
-  const videoUrl = pickVideoUrl(meme);
+  onStatus?.("uploading");
+  const [faceUrl, videoUrl, gifUrl, targetImageUrl] = await Promise.all([
+    uploadToFal(key, photoFile),
+    resolveMediaUrl(pickVideoUrl(meme)),
+    resolveMediaUrl(meme.mediaUrl),
+    resolveMediaUrl(meme.previewUrl || meme.mediaUrl),
+  ]);
+
   const useGifFace =
     swapType === "face" &&
     (isGifUrl(meme.mediaUrl) || meme.isAnimated);
@@ -153,7 +173,7 @@ async function generateWithFal(
       FAL_MODELS.faceGif,
       {
         face_image: faceUrl,
-        gif_image: meme.mediaUrl,
+        gif_image: gifUrl,
       },
       onStatus
     );
@@ -165,7 +185,7 @@ async function generateWithFal(
     FAL_MODELS.faceImage,
     {
       face_image_0: faceUrl,
-      target_image: meme.previewUrl || meme.mediaUrl,
+      target_image: targetImageUrl,
       gender_0: "male",
       workflow_type: "user_hair",
     },

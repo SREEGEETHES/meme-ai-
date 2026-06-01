@@ -15,8 +15,31 @@ export const FAL_MODELS = {
 } as const;
 
 export async function uploadToFal(key: string, file: File): Promise<string> {
+  return uploadBlobToFal(key, file, file.name || "selfie.jpg", file.type || "image/jpeg");
+}
+
+export async function uploadUrlToFal(key: string, url: string): Promise<string> {
+  const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
+  const res = await fetch(proxyUrl);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to fetch media through proxy: ${text}`);
+  }
+  const blob = await res.blob();
+  const contentType = res.headers.get("Content-Type") || "application/octet-stream";
+  const fileName = url.split("/").pop()?.split("?")[0] || "media";
+
+  return uploadBlobToFal(key, blob, fileName, contentType);
+}
+
+async function uploadBlobToFal(
+  key: string,
+  data: Blob | File,
+  fileName: string,
+  contentType: string
+): Promise<string> {
   const initRes = await fetch(
-    `${FAL_STORAGE}?storage_type=fal-cdn-v2`,
+    `${FAL_STORAGE}?storage_type=fal-cdn-v3`,
     {
       method: "POST",
       headers: {
@@ -24,8 +47,8 @@ export async function uploadToFal(key: string, file: File): Promise<string> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        file_name: file.name || "selfie.jpg",
-        content_type: file.type || "image/jpeg",
+        file_name: fileName,
+        content_type: contentType,
       }),
     }
   );
@@ -41,8 +64,8 @@ export async function uploadToFal(key: string, file: File): Promise<string> {
 
   const putRes = await fetch(init.upload_url, {
     method: "PUT",
-    headers: { "Content-Type": file.type || "image/jpeg" },
-    body: file,
+    headers: { "Content-Type": contentType },
+    body: data,
   });
 
   if (!putRes.ok) {
