@@ -49,5 +49,5 @@ export const DEFAULT_SETTINGS: AppSettings = {
   provider: "auto",
   ollamaBaseUrl: "http://localhost:11434",
   ollamaModel: "llama3.2",
-  githubRepoUrl: "https://github.com/your-username/meme-ai",
+  githubRepoUrl: "https://github.com/SREEGEETHES/meme-ai-",
 };

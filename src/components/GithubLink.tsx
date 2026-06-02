@@ -10,7 +10,7 @@ export function GithubLink({
   className?: string;
   children?: React.ReactNode;
 }) {
-  const [url, setUrl] = useState("https://github.com/SREEGEETHES/meme-ai");
+  const [url, setUrl] = useState("https://github.com/SREEGEETHES/meme-ai-");
 
   useEffect(() => {
     const saved = loadSettings().githubRepoUrl;
