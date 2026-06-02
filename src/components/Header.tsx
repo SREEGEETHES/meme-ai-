@@ -46,7 +46,7 @@ export function Header() {
             API KEYS
           </Link>
           <a
-            href="https://github.com"
+            href="https://github.com/SREEGEETHES/meme-ai"
             target="_blank"
             rel="noopener noreferrer"
             className="hidden border-2 border-meme-black bg-meme-red px-3 py-1.5 text-xs font-bold text-white hover:bg-meme-black sm:inline-block"

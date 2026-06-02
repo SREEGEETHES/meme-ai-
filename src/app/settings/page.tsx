@@ -123,7 +123,7 @@ export default function SettingsPage() {
           />
         </Field>
 
-        <Field label="GitHub repo URL" hint="For Go to GitHub buttons">
+        <Field label="GitHub repo URL" hint="For Go to GitHub buttons — defaults to your repo">
           <input
             type="url"
             value={settings.githubRepoUrl}

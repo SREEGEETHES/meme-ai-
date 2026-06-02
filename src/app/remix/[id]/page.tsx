@@ -139,9 +139,11 @@ function RemixPage() {
           createdAt: Date.now(),
         });
       } catch (e) {
+        const msg = e instanceof Error ? e.message : "Generation failed";
+        console.error("Generation error:", e);
         setGenState("error");
-        setError(e instanceof Error ? e.message : "Generation failed");
-        setStatusText("Failed — check API key or Replicate dashboard");
+        setError(msg);
+        setStatusText(msg.length > 80 ? msg.slice(0, 80) + "…" : msg);
       }
     },
     [meme, photoFile, swapType]
@@ -241,14 +243,23 @@ function RemixPage() {
             </div>
           )}
           {outputUrl && genState !== "generating" && (
-            <video
-              src={outputUrl}
-              className="h-full w-full object-contain"
-              controls
-              autoPlay
-              loop
-              playsInline
-            />
+            /\.(gif|jpe?g|png|webp)(\?|$)/i.test(outputUrl) ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={outputUrl}
+                alt="Generated result"
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <video
+                src={outputUrl}
+                className="h-full w-full object-contain"
+                controls
+                autoPlay
+                loop
+                playsInline
+              />
+            )
           )}
           {genState === "idle" && !outputUrl && (
             <div className="flex h-full min-h-[200px] items-center justify-center text-sm text-meme-black/50">
@@ -298,13 +309,28 @@ function RemixPage() {
         <div className="flex flex-wrap gap-2">
           {genState === "done" && (
             <>
-              <a
-                href={outputUrl!}
-                download
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const res = await fetch(outputUrl!);
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `meme-${Date.now()}.${blob.type === "image/gif" ? "gif" : "mp4"}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  } catch {
+                    window.open(outputUrl!, "_blank");
+                  }
+                }}
                 className="border-2 border-meme-black px-4 py-3 text-sm font-bold"
               >
                 DOWNLOAD
-              </a>
+              </button>
               <button
                 type="button"
                 onClick={() => setRegenOpen(true)}

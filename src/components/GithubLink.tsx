@@ -10,14 +10,17 @@ export function GithubLink({
   className?: string;
   children?: React.ReactNode;
 }) {
-  const [url, setUrl] = useState("https://github.com");
+  const [url, setUrl] = useState("https://github.com/SREEGEETHES/meme-ai");
 
   useEffect(() => {
-    setUrl(loadSettings().githubRepoUrl || "https://github.com");
-    const els = document.querySelectorAll("#github-header-cta");
-    els.forEach((el) => {
-      if (el instanceof HTMLAnchorElement) el.href = loadSettings().githubRepoUrl;
-    });
+    const saved = loadSettings().githubRepoUrl;
+    if (saved) {
+      setUrl(saved);
+      const els = document.querySelectorAll("#github-header-cta");
+      els.forEach((el) => {
+        if (el instanceof HTMLAnchorElement) el.href = saved;
+      });
+    }
   }, []);
 
   return (

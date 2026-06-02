@@ -3,7 +3,7 @@
 import { FAL_MODELS, runFalModel, uploadToFal, uploadUrlToFal } from "./fal-client";
 import { REPLICATE_MODELS } from "./models";
 import {
-  createPrediction,
+  createPredictionWithRetry,
   extractOutputUrl,
   pollPrediction,
   uploadFileToReplicate,
@@ -43,6 +43,10 @@ function isGifUrl(url: string): boolean {
   );
 }
 
+function toGifUrl(url: string): string {
+  return url.replace(/\.mp4(\?|$)/i, ".gif$1");
+}
+
 function isExternalGiphyUrl(url: string): boolean {
   try {
     const hostname = new URL(url).hostname;
@@ -69,10 +73,12 @@ async function generateWithReplicate(
     photoFile,
     photoFile.name || "selfie.jpg"
   );
+  console.log("Replicate character uploaded:", characterUrl);
 
   const videoUrl = pickVideoUrl(meme);
   const mediaIsGif =
     isGifUrl(meme.mediaUrl) && !videoUrl.includes(".mp4");
+  console.log("Replicate inputs — video:", videoUrl, "gif:", meme.mediaUrl, "isGif:", mediaIsGif);
 
   if (swapType === "full_body") {
     onStatus?.("processing");
@@ -87,7 +93,7 @@ async function generateWithReplicate(
       input.seed = Math.floor(Math.random() * 1_000_000);
     }
 
-    const pred = await createPrediction(
+    const pred = await createPredictionWithRetry(
       token,
       REPLICATE_MODELS.fullBodyVideo,
       input
@@ -102,9 +108,9 @@ async function generateWithReplicate(
 
   if (mediaIsGif || meme.isAnimated) {
     onStatus?.("processing");
-    const pred = await createPrediction(token, REPLICATE_MODELS.faceGif, {
-      gif: meme.mediaUrl,
-      swap_image: characterUrl,
+    const pred = await createPredictionWithRetry(token, REPLICATE_MODELS.faceGif, {
+      target: toGifUrl(meme.mediaUrl),
+      source: characterUrl,
     });
     if (pred.status === "succeeded" && pred.output) {
       onStatus?.("succeeded");
@@ -115,7 +121,7 @@ async function generateWithReplicate(
   }
 
   onStatus?.("processing");
-  const pred = await createPrediction(token, REPLICATE_MODELS.faceImage, {
+  const pred = await createPredictionWithRetry(token, REPLICATE_MODELS.faceImage, {
     input_image: meme.previewUrl || meme.mediaUrl,
     swap_image: characterUrl,
   });
@@ -195,17 +201,36 @@ async function generateWithFal(
 
 export async function generateMeme(params: GenerateParams): Promise<string> {
   const provider = resolveProvider(params.settings);
+  const onStatus = params.onStatus;
+
+  let outputUrl: string;
 
   if (provider === "mock") {
-    return mockGenerate(params.onStatus);
+    outputUrl = await mockGenerate(onStatus);
+  } else if (provider === "fal") {
+    outputUrl = await generateWithFal(params, params.settings.falApiKey.trim());
+  } else {
+    outputUrl = await generateWithReplicate(
+      params,
+      params.settings.replicateApiToken.trim()
+    );
   }
 
-  if (provider === "fal") {
-    return generateWithFal(params, params.settings.falApiKey.trim());
+  onStatus?.("uploading");
+
+  try {
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: outputUrl }),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { url: string };
+      return data.url;
+    }
+  } catch {
+    // fall through to return original URL
   }
 
-  return generateWithReplicate(
-    params,
-    params.settings.replicateApiToken.trim()
-  );
+  return outputUrl;
 }
