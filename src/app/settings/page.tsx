@@ -94,7 +94,7 @@ export default function SettingsPage() {
         </Field>
 
         <Field
-          label="Replicate API token (optional)"
+          label="Replicate API token"
           hint="replicate.com/account/api-tokens"
         >
           <input
@@ -111,7 +111,7 @@ export default function SettingsPage() {
         </Field>
 
         <Field
-          label="Giphy API key (optional)"
+          label="Giphy API key"
           hint="Without this, bundled memes still work on Trending."
         >
           <input
